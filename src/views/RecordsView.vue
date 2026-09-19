@@ -1,7 +1,8 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { useRecordStore } from '@/stores/records'
+import { useSpaceStore } from '@/stores/spaces'
 import { useItemStore } from '@/stores/items'
+import { useRecordStore } from '@/stores/records'
 import { useTechnicianStore } from '@/stores/technicians'
 import { RECORD_TYPES } from '@/constants'
 import RecordCard from '@/components/record/RecordCard.vue'
@@ -9,17 +10,22 @@ import RecordForm from '@/components/record/RecordForm.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 
-const recordStore = useRecordStore()
+const spaceStore = useSpaceStore()
 const itemStore = useItemStore()
+const recordStore = useRecordStore()
 const technicianStore = useTechnicianStore()
 
 const typeFilter = ref('')
 const showForm = ref(false)
 
+const scopedRecords = computed(() => spaceStore.scopedRecords)
+
 const filtered = computed(() => {
-  if (!typeFilter.value) return recordStore.records
-  return recordStore.records.filter((r) => r.type === typeFilter.value)
+  if (!typeFilter.value) return scopedRecords.value
+  return scopedRecords.value.filter((r) => r.type === typeFilter.value)
 })
+
+const scopeTitle = computed(() => (spaceStore.isAllSpaces ? '全部空间' : spaceStore.currentSpace?.name))
 
 function itemName(id) {
   const it = itemStore.itemById(id)
@@ -28,6 +34,12 @@ function itemName(id) {
 function techName(id) {
   const t = technicianStore.technicianById(id)
   return t ? t.name : ''
+}
+function spaceNameOf(record) {
+  if (!spaceStore.isAllSpaces) return ''
+  // 优先用记录上归属物品所在空间（物品被移动后以最新归属为准）
+  const item = record.itemId ? itemStore.itemById(record.itemId) : null
+  return spaceStore.spaceName(item?.spaceId || record.spaceId)
 }
 function onSave(payload) {
   recordStore.addRecord(payload)
@@ -44,7 +56,7 @@ function onDelete(record) {
     <div class="page-head">
       <div>
         <h1 class="page-title">保养 / 维修记录</h1>
-        <p class="page-sub">共 {{ recordStore.records.length }} 条记录</p>
+        <p class="page-sub">{{ scopeTitle }} · 共 {{ scopedRecords.length }} 条记录</p>
       </div>
       <button class="btn btn-primary" @click="showForm = true">+ 添加记录</button>
     </div>
@@ -68,6 +80,7 @@ function onDelete(record) {
         :record="r"
         :item-name="itemName(r.itemId)"
         :technician-name="techName(r.technicianId)"
+        :space-name="spaceNameOf(r)"
         @delete="onDelete"
       />
     </div>
@@ -75,7 +88,7 @@ function onDelete(record) {
 
     <BaseModal v-if="showForm" title="记录保养 / 维修" @close="showForm = false">
       <RecordForm
-        :items="itemStore.items"
+        :items="spaceStore.scopedItems"
         :technicians="technicianStore.technicians"
         @save="onSave"
         @cancel="showForm = false"

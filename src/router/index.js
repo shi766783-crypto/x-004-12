@@ -4,6 +4,7 @@ const routes = [
   { path: '/', name: 'home', component: () => import('@/views/HomeView.vue') },
   { path: '/items', name: 'items', component: () => import('@/views/ItemsView.vue') },
   { path: '/items/:id', name: 'item-detail', component: () => import('@/views/ItemDetailView.vue') },
+  { path: '/spaces', name: 'spaces', component: () => import('@/views/SpacesView.vue') },
   { path: '/records', name: 'records', component: () => import('@/views/RecordsView.vue') },
   { path: '/technicians', name: 'technicians', component: () => import('@/views/TechniciansView.vue') },
   { path: '/technicians/:id', name: 'technician-detail', component: () => import('@/views/TechnicianDetailView.vue') },

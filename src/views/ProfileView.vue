@@ -4,11 +4,13 @@ import { useItemStore } from '@/stores/items'
 import { useRecordStore } from '@/stores/records'
 import { useTechnicianStore } from '@/stores/technicians'
 import { useUserStore } from '@/stores/user'
+import { useSpaceStore } from '@/stores/spaces'
 
 const itemStore = useItemStore()
 const recordStore = useRecordStore()
 const technicianStore = useTechnicianStore()
 const userStore = useUserStore()
+const spaceStore = useSpaceStore()
 
 const badges = computed(() => userStore.allBadges)
 const unlocked = computed(() => userStore.unlockedCount)
@@ -19,6 +21,14 @@ const stats = computed(() => [
   { label: '师傅', value: technicianStore.technicians.length },
   { label: '评价', value: technicianStore.reviews.length }
 ])
+
+const spaceRows = computed(() =>
+  spaceStore.spaces.map((s) => ({
+    ...s,
+    items: spaceStore.itemCountBySpace[s.id] || 0,
+    records: recordStore.records.filter((r) => r.spaceId === s.id).length
+  }))
+)
 </script>
 
 <template>
@@ -26,7 +36,7 @@ const stats = computed(() => [
     <section class="profile-head">
       <div class="avatar">我</div>
       <div class="head-info">
-        <h1>我的家</h1>
+        <h1>我的</h1>
         <p>已解锁 {{ unlocked }} / {{ badges.length }} 枚成就徽章</p>
       </div>
     </section>
@@ -35,6 +45,24 @@ const stats = computed(() => [
       <div v-for="s in stats" :key="s.label" class="stat-card">
         <div class="stat-label">{{ s.label }}</div>
         <div class="stat-value">{{ s.value }}</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <h3>家庭空间（{{ spaceStore.spaces.length }}）</h3>
+        <router-link to="/spaces" class="btn btn-sm btn-outline">管理空间</router-link>
+      </div>
+      <div class="space-rows">
+        <router-link
+          v-for="s in spaceRows"
+          :key="s.id"
+          to="/spaces"
+          class="space-row"
+        >
+          <span class="s-name">{{ s.name }}</span>
+          <span class="s-meta">{{ s.items }} 个物品 · {{ s.records }} 条记录</span>
+        </router-link>
       </div>
     </section>
 
@@ -96,6 +124,39 @@ const stats = computed(() => [
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 12px;
+}
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.section-head h3 {
+  margin-bottom: 0;
+}
+.space-rows {
+  display: flex;
+  flex-direction: column;
+}
+.space-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--bg-soft);
+  text-decoration: none;
+  color: inherit;
+}
+.space-row:last-child {
+  border-bottom: none;
+}
+.s-name {
+  font-weight: 600;
+}
+.s-meta {
+  font-size: 12px;
+  color: var(--text-muted);
 }
 .badges {
   display: grid;

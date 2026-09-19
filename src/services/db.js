@@ -4,11 +4,23 @@
 import { load, save } from './storage'
 
 const KEYS = {
+  spaces: 'hmm.spaces',
+  currentSpace: 'hmm.currentSpace',
   items: 'hmm.items',
   records: 'hmm.records',
   technicians: 'hmm.technicians',
   reviews: 'hmm.reviews',
   user: 'hmm.user'
+}
+
+export const spaceRepo = {
+  get: () => load(KEYS.spaces, []),
+  set: (list) => save(KEYS.spaces, list)
+}
+
+export const currentSpaceRepo = {
+  get: () => load(KEYS.currentSpace, ''),
+  set: (id) => save(KEYS.currentSpace, id)
 }
 
 export const itemRepo = {

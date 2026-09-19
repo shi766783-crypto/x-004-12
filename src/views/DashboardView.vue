@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { useRecordStore } from '@/stores/records'
+import { useSpaceStore } from '@/stores/spaces'
 import { useItemStore } from '@/stores/items'
 import { useTechnicianStore } from '@/stores/technicians'
 import { categoryOf, PALETTE } from '@/constants'
@@ -9,32 +9,36 @@ import PieChart from '@/components/dashboard/PieChart.vue'
 import BarChart from '@/components/dashboard/BarChart.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 
-const recordStore = useRecordStore()
+const spaceStore = useSpaceStore()
 const itemStore = useItemStore()
 const technicianStore = useTechnicianStore()
 
 const year = new Date().getFullYear()
 
-const totalCost = computed(() => recordStore.records.reduce((s, r) => s + (Number(r.cost) || 0), 0))
+// 看板所有指标均跟随顶部所选空间
+const records = computed(() => spaceStore.scopedRecords)
+const scopeName = computed(() => (spaceStore.isAllSpaces ? '全部空间' : spaceStore.currentSpace?.name))
+
+const totalCost = computed(() => records.value.reduce((s, r) => s + (Number(r.cost) || 0), 0))
 
 const maintenanceYear = computed(
   () =>
-    recordStore.records.filter(
+    records.value.filter(
       (r) => r.type === 'maintenance' && r.date && Number(r.date.slice(0, 4)) === year
     ).length
 )
 
-const repairCount = computed(() => recordStore.records.filter((r) => r.type !== 'maintenance').length)
+const repairCount = computed(() => records.value.filter((r) => r.type !== 'maintenance').length)
 
 const avgCost = computed(() => {
-  const withCost = recordStore.records.filter((r) => Number(r.cost) > 0)
+  const withCost = records.value.filter((r) => Number(r.cost) > 0)
   if (!withCost.length) return 0
   return totalCost.value / withCost.length
 })
 
 const categoryCost = computed(() => {
   const map = {}
-  for (const r of recordStore.records) {
+  for (const r of records.value) {
     const item = itemStore.itemById(r.itemId)
     if (!item) continue
     const cat = item.category
@@ -51,7 +55,7 @@ const categoryCost = computed(() => {
 
 const monthlyData = computed(() => {
   const months = Array.from({ length: 12 }, (_, i) => ({ label: `${i + 1}月`, value: 0 }))
-  for (const r of recordStore.records) {
+  for (const r of records.value) {
     if (r.type !== 'maintenance' || !r.date) continue
     const m = Number(r.date.slice(5, 7)) - 1
     if (Number(r.date.slice(0, 4)) === year && m >= 0 && m < 12) months[m].value += 1
@@ -59,12 +63,23 @@ const monthlyData = computed(() => {
   return months
 })
 
-const techOrders = computed(() =>
-  technicianStore.rankedTechnicians
-    .filter((t) => (t.orderCount || 0) > 0)
+// 师傅接单量按当前范围内的记录统计，而不是全局累计值
+const techOrders = computed(() => {
+  const counter = {}
+  for (const r of records.value) {
+    if (!r.technicianId) continue
+    counter[r.technicianId] = (counter[r.technicianId] || 0) + 1
+  }
+  return Object.entries(counter)
+    .map(([id, count]) => {
+      const t = technicianStore.technicianById(id)
+      return t ? { label: t.name, value: count } : null
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.value - a.value)
     .slice(0, 8)
-    .map((t, i) => ({ label: t.name, value: t.orderCount, color: PALETTE[i % PALETTE.length] }))
-)
+    .map((d, i) => ({ ...d, color: PALETTE[i % PALETTE.length] }))
+})
 </script>
 
 <template>
@@ -72,7 +87,7 @@ const techOrders = computed(() =>
     <div class="page-head">
       <div>
         <h1 class="page-title">统计看板</h1>
-        <p class="page-sub">维修保养开销与频次一目了然</p>
+        <p class="page-sub">{{ scopeName }} · 维修保养开销与频次一目了然</p>
       </div>
     </div>
 
@@ -95,7 +110,7 @@ const techOrders = computed(() =>
       </div>
     </section>
 
-    <template v-if="recordStore.records.length">
+    <template v-if="records.length">
       <section class="card">
         <h3>各类别花费占比</h3>
         <PieChart :data="categoryCost" :center-text="'¥' + fmtMoney(totalCost)" center-sub="总花费" />
@@ -112,7 +127,7 @@ const techOrders = computed(() =>
       </section>
     </template>
 
-    <EmptyState v-else title="暂无统计数据" desc="添加保养 / 维修记录后，这里会展示图表">
+    <EmptyState v-else :title="`「${scopeName}」暂无统计数据`" desc="添加保养 / 维修记录后，这里会展示图表">
       <router-link to="/records" class="btn btn-primary" style="margin-top: 12px">去记录</router-link>
     </EmptyState>
   </div>

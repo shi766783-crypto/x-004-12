@@ -4,7 +4,9 @@ import { CATEGORIES, CYCLE_UNITS } from '@/constants'
 import BaseImageUpload from '@/components/common/BaseImageUpload.vue'
 
 const props = defineProps({
-  item: { type: Object, default: null }
+  item: { type: Object, default: null },
+  spaces: { type: Array, default: () => [] },
+  defaultSpaceId: { type: String, default: '' }
 })
 const emit = defineEmits(['save', 'cancel'])
 
@@ -18,12 +20,17 @@ const form = reactive({
   cycleUnit: props.item?.cycleUnit || 'month',
   lastMaintenanceDate: props.item?.lastMaintenanceDate || '',
   notes: props.item?.notes || '',
-  photo: props.item?.photo || ''
+  photo: props.item?.photo || '',
+  spaceId: props.item?.spaceId || props.defaultSpaceId || props.spaces[0]?.id || ''
 })
 
 function submit() {
   if (!form.name.trim()) {
     alert('请填写物品名称')
+    return
+  }
+  if (!form.spaceId) {
+    alert('请选择所属空间')
     return
   }
   emit('save', { ...form, cycleValue: Number(form.cycleValue) || 1 })
@@ -41,6 +48,13 @@ function submit() {
       <label class="label">类别</label>
       <select v-model="form.category" class="input">
         <option v-for="c in CATEGORIES" :key="c.value" :value="c.value">{{ c.label }}</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label class="label">所属空间 <em>*</em></label>
+      <select v-model="form.spaceId" class="input">
+        <option v-for="s in spaces" :key="s.id" :value="s.id">{{ s.name }}</option>
       </select>
     </div>
 

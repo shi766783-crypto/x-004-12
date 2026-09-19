@@ -2,17 +2,27 @@ import { defineStore } from 'pinia'
 import { itemRepo } from '@/services/db'
 import { uid } from '@/utils/id'
 import { todayStr } from '@/utils/date'
+import { useSpaceStore } from './spaces'
 
 export const useItemStore = defineStore('items', {
   state: () => ({
     items: itemRepo.get()
   }),
   getters: {
-    itemById: (state) => (id) => state.items.find((i) => i.id === id)
+    itemById: (state) => (id) => state.items.find((i) => i.id === id),
+    itemsBySpace: (state) => (spaceId) => state.items.filter((i) => i.spaceId === spaceId)
   },
   actions: {
     addItem(payload) {
-      const item = { id: uid('it_'), createdAt: todayStr(), ...payload }
+      const spaceStore = useSpaceStore()
+      // 表单可显式指定空间（如在"全部空间"视图下建档）；否则归入当前空间
+      const spaceId =
+        payload.spaceId && spaceStore.spaceById(payload.spaceId)
+          ? payload.spaceId
+          : spaceStore.isAllSpaces
+            ? spaceStore.spaces[0]?.id
+            : spaceStore.currentId
+      const item = { id: uid('it_'), createdAt: todayStr(), ...payload, spaceId }
       this.items.unshift(item)
       itemRepo.set(this.items)
       return item

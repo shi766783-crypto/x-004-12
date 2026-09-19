@@ -6,7 +6,8 @@ import { fmtMoney } from '@/utils/format'
 const props = defineProps({
   record: { type: Object, required: true },
   itemName: { type: String, default: '' },
-  technicianName: { type: String, default: '' }
+  technicianName: { type: String, default: '' },
+  spaceName: { type: String, default: '' }
 })
 const emit = defineEmits(['delete'])
 
@@ -17,6 +18,12 @@ const type = computed(() => recordTypeOf(props.record.type))
   <div class="record-card">
     <div class="head">
       <span class="type" :style="{ background: type.color + '22', color: type.color }">{{ type.label }}</span>
+      <span v-if="spaceName" class="space-tag">
+        <svg viewBox="0 0 24 24" width="10" height="10" aria-hidden="true">
+          <path fill="currentColor" d="M12 3 2 11h3v9h5v-6h4v6h5v-9h3z" />
+        </svg>
+        {{ spaceName }}
+      </span>
       <span class="date">{{ record.date }}</span>
       <button class="del" type="button" @click="emit('delete', record)">删除</button>
     </div>
@@ -65,6 +72,16 @@ const type = computed(() => recordTypeOf(props.record.type))
 .date {
   font-size: 12px;
   color: var(--text-muted);
+}
+.space-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  padding: 2px 7px;
+  border-radius: 999px;
 }
 .del {
   margin-left: auto;

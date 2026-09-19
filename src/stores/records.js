@@ -15,16 +15,18 @@ export const useRecordStore = defineStore('records', {
   },
   actions: {
     addRecord(payload) {
+      // 记录跟随物品所属空间，保证删除/迁移空间时可以级联处理
+      const item = payload.itemId ? useItemStore().itemById(payload.itemId) : null
       const record = {
         id: uid('rec_'),
         createdAt: todayStr(),
         onTime: false,
-        ...payload
+        ...payload,
+        spaceId: item?.spaceId || payload.spaceId || ''
       }
 
       // 保养类记录：判断是否在到期日前完成（用于"保养准时"成就与保养达人榜）
       if (record.type === 'maintenance') {
-        const item = useItemStore().itemById(record.itemId)
         const due = item ? nextDueDate(item) : null
         record.onTime = due ? record.date <= due : true
       }
@@ -45,6 +47,18 @@ export const useRecordStore = defineStore('records', {
     removeRecord(id) {
       this.records = this.records.filter((r) => r.id !== id)
       recordRepo.set(this.records)
+    },
+    // 物品移动到其他空间时，其历史记录跟随迁移
+    moveRecordsByItem(itemId, spaceId) {
+      let changed = false
+      this.records = this.records.map((r) => {
+        if (r.itemId === itemId && r.spaceId !== spaceId) {
+          changed = true
+          return { ...r, spaceId }
+        }
+        return r
+      })
+      if (changed) recordRepo.set(this.records)
     }
   }
 })

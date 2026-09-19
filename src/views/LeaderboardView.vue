@@ -1,30 +1,30 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useTechnicianStore } from '@/stores/technicians'
-import { useItemStore } from '@/stores/items'
-import { useRecordStore } from '@/stores/records'
+import { useSpaceStore } from '@/stores/spaces'
 import { categoryOf } from '@/constants'
 import StarRating from '@/components/common/StarRating.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 
 const technicianStore = useTechnicianStore()
-const itemStore = useItemStore()
-const recordStore = useRecordStore()
+const spaceStore = useSpaceStore()
 
 const tab = ref('tech')
 
 const rankedTechs = computed(() => technicianStore.rankedTechnicians)
 
 const rankedKeepers = computed(() => {
-  return itemStore.items
+  return spaceStore.scopedItems
     .map((i) => {
-      const onTimeCount = recordStore.records.filter(
+      const onTimeCount = spaceStore.scopedRecords.filter(
         (r) => r.itemId === i.id && r.type === 'maintenance' && r.onTime
       ).length
       return { ...i, onTimeCount }
     })
     .sort((a, b) => b.onTimeCount - a.onTimeCount)
 })
+
+const scopeText = computed(() => (spaceStore.isAllSpaces ? '全部空间' : spaceStore.currentSpace?.name))
 
 function medalStyle(i) {
   if (i === 0) return { background: '#f6c343', color: '#7c5a00' }
@@ -48,7 +48,7 @@ function medalStyle(i) {
         金牌维修师傅榜
       </button>
       <button class="btn" :class="{ 'btn-primary': tab === 'keeper' }" @click="tab = 'keeper'">
-        保养达人榜
+        保养达人榜（{{ scopeText }}）
       </button>
     </div>
 

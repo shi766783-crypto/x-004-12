@@ -4,7 +4,8 @@ import { categoryOf } from '@/constants'
 import { daysUntilDue, getUrgency, URGENCY_LABEL } from '@/utils/date'
 
 const props = defineProps({
-  item: { type: Object, required: true }
+  item: { type: Object, required: true },
+  spaceName: { type: String, default: '' }
 })
 
 const category = computed(() => categoryOf(props.item.category))
@@ -34,6 +35,12 @@ const urgencyText = computed(() => {
         </span>
       </div>
       <div v-if="item.brandModel" class="brand">{{ item.brandModel }}</div>
+      <div v-if="spaceName" class="space-line">
+        <svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true">
+          <path fill="currentColor" d="M12 3 2 11h3v9h5v-6h4v6h5v-9h3z" />
+        </svg>
+        {{ spaceName }}
+      </div>
       <div class="bottom">
         <span class="status" :class="urgency">{{ urgencyText }}</span>
       </div>
@@ -109,6 +116,13 @@ const urgencyText = computed(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.space-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--primary);
 }
 .bottom {
   margin-top: auto;

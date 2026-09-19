@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useItemStore } from '@/stores/items'
 import { useRecordStore } from '@/stores/records'
+import { useSpaceStore } from '@/stores/spaces'
 import { useTechnicianStore } from '@/stores/technicians'
 import { categoryOf, CYCLE_UNITS } from '@/constants'
 import {
@@ -24,6 +25,7 @@ const route = useRoute()
 const router = useRouter()
 const itemStore = useItemStore()
 const recordStore = useRecordStore()
+const spaceStore = useSpaceStore()
 const technicianStore = useTechnicianStore()
 
 const showEdit = ref(false)
@@ -31,6 +33,7 @@ const showRecord = ref(false)
 
 const item = computed(() => itemStore.itemById(route.params.id))
 const category = computed(() => (item.value ? categoryOf(item.value.category) : null))
+const spaceName = computed(() => (item.value ? spaceStore.spaceName(item.value.spaceId) : ''))
 const records = computed(() => (item.value ? recordStore.recordsByItem(item.value.id) : []))
 const unitLabel = computed(() => {
   const u = CYCLE_UNITS.find((x) => x.value === item.value?.cycleUnit)
@@ -44,6 +47,10 @@ function techName(id) {
 }
 
 function onSaveItem(payload) {
+  // 物品移动到其他空间时，历史记录跟随迁移
+  if (payload.spaceId && payload.spaceId !== item.value.spaceId) {
+    recordStore.moveRecordsByItem(item.value.id, payload.spaceId)
+  }
   itemStore.updateItem(item.value.id, payload)
   showEdit.value = false
 }
@@ -84,6 +91,12 @@ function onDeleteRecord(record) {
           </span>
         </div>
         <div v-if="item.brandModel" class="muted">{{ item.brandModel }}</div>
+        <div class="muted space-line">
+          <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true">
+            <path fill="currentColor" d="M12 3 2 11h3v9h5v-6h4v6h5v-9h3z" />
+          </svg>
+          所属空间：{{ spaceName }}
+        </div>
         <div class="status-row">
           <span class="status" :class="getUrgency(item)">{{ URGENCY_LABEL[getUrgency(item)] }}</span>
           <span v-if="nextDueDate(item)" class="muted">下次保养：{{ nextDueDate(item) }}</span>
@@ -120,12 +133,18 @@ function onDeleteRecord(record) {
     </section>
 
     <BaseModal v-if="showEdit" title="编辑物品" @close="showEdit = false">
-      <ItemForm :item="item" @save="onSaveItem" @cancel="showEdit = false" />
+      <ItemForm
+        :item="item"
+        :spaces="spaceStore.spaces"
+        :default-space-id="item.spaceId"
+        @save="onSaveItem"
+        @cancel="showEdit = false"
+      />
     </BaseModal>
 
     <BaseModal v-if="showRecord" title="记录保养 / 维修" @close="showRecord = false">
       <RecordForm
-        :items="itemStore.items"
+        :items="[item]"
         :technicians="technicianStore.technicians"
         :preset-item-id="item.id"
         @save="onSaveRecord"
@@ -183,6 +202,12 @@ function onDeleteRecord(record) {
 .muted {
   color: var(--text-muted);
   font-size: 13px;
+}
+.space-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--primary);
 }
 .status-row {
   display: flex;
