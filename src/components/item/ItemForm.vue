@@ -4,13 +4,16 @@ import { CATEGORIES, CYCLE_UNITS } from '@/constants'
 import BaseImageUpload from '@/components/common/BaseImageUpload.vue'
 
 const props = defineProps({
-  item: { type: Object, default: null }
+  item: { type: Object, default: null },
+  spaces: { type: Array, default: () => [] },
+  currentSpaceId: { type: String, default: '' }
 })
 const emit = defineEmits(['save', 'cancel'])
 
 const form = reactive({
   name: props.item?.name || '',
   category: props.item?.category || 'appliance',
+  spaceId: props.item?.spaceId || props.currentSpaceId || '',
   brandModel: props.item?.brandModel || '',
   purchaseDate: props.item?.purchaseDate || '',
   warrantyEnd: props.item?.warrantyEnd || '',
@@ -41,6 +44,13 @@ function submit() {
       <label class="label">类别</label>
       <select v-model="form.category" class="input">
         <option v-for="c in CATEGORIES" :key="c.value" :value="c.value">{{ c.label }}</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label class="label">所属空间</label>
+      <select v-model="form.spaceId" class="input">
+        <option v-for="s in spaces" :key="s.id" :value="s.id">{{ s.name }}</option>
       </select>
     </div>
 

@@ -4,6 +4,7 @@ import { useItemStore } from '@/stores/items'
 import { useRecordStore } from '@/stores/records'
 import { useTechnicianStore } from '@/stores/technicians'
 import { useUserStore } from '@/stores/user'
+import SpaceSwitcher from '@/components/space/SpaceSwitcher.vue'
 
 const itemStore = useItemStore()
 const recordStore = useRecordStore()
@@ -41,9 +42,12 @@ watch(
           <span class="brand-mark"></span>
           <span class="brand-text">家庭维修与保养管家</span>
         </router-link>
-        <span class="badge-count" v-if="userStore.unlockedCount">
-          已解锁 {{ userStore.unlockedCount }} 枚徽章
-        </span>
+        <div class="header-right">
+          <SpaceSwitcher />
+          <span class="badge-count" v-if="userStore.unlockedCount">
+            已解锁 {{ userStore.unlockedCount }} 枚徽章
+          </span>
+        </div>
       </div>
     </header>
 
@@ -108,6 +112,11 @@ watch(
   inset: 5px;
   background: var(--primary);
   clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 70%, 0 100%);
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .badge-count {
   font-size: 12px;

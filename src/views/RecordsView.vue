@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useRecordStore } from '@/stores/records'
 import { useItemStore } from '@/stores/items'
 import { useTechnicianStore } from '@/stores/technicians'
+import { useSpaceStore } from '@/stores/spaces'
 import { RECORD_TYPES } from '@/constants'
 import RecordCard from '@/components/record/RecordCard.vue'
 import RecordForm from '@/components/record/RecordForm.vue'
@@ -12,13 +13,17 @@ import EmptyState from '@/components/common/EmptyState.vue'
 const recordStore = useRecordStore()
 const itemStore = useItemStore()
 const technicianStore = useTechnicianStore()
+const spaceStore = useSpaceStore()
 
 const typeFilter = ref('')
 const showForm = ref(false)
 
+const scopedItems = computed(() => itemStore.itemsInSpace(spaceStore.currentId))
+const scopedRecords = computed(() => recordStore.recordsInSpace(spaceStore.currentId))
+
 const filtered = computed(() => {
-  if (!typeFilter.value) return recordStore.records
-  return recordStore.records.filter((r) => r.type === typeFilter.value)
+  if (!typeFilter.value) return scopedRecords.value
+  return scopedRecords.value.filter((r) => r.type === typeFilter.value)
 })
 
 function itemName(id) {
@@ -30,7 +35,7 @@ function techName(id) {
   return t ? t.name : ''
 }
 function onSave(payload) {
-  recordStore.addRecord(payload)
+  recordStore.addRecord({ ...payload, spaceId: spaceStore.currentId })
   showForm.value = false
 }
 function onDelete(record) {
@@ -44,7 +49,7 @@ function onDelete(record) {
     <div class="page-head">
       <div>
         <h1 class="page-title">保养 / 维修记录</h1>
-        <p class="page-sub">共 {{ recordStore.records.length }} 条记录</p>
+        <p class="page-sub">{{ spaceStore.currentSpace?.name }} · 共 {{ scopedRecords.length }} 条记录</p>
       </div>
       <button class="btn btn-primary" @click="showForm = true">+ 添加记录</button>
     </div>
@@ -75,7 +80,7 @@ function onDelete(record) {
 
     <BaseModal v-if="showForm" title="记录保养 / 维修" @close="showForm = false">
       <RecordForm
-        :items="itemStore.items"
+        :items="scopedItems"
         :technicians="technicianStore.technicians"
         @save="onSave"
         @cancel="showForm = false"

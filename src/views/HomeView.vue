@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useItemStore } from '@/stores/items'
 import { useRecordStore } from '@/stores/records'
 import { useTechnicianStore } from '@/stores/technicians'
+import { useSpaceStore } from '@/stores/spaces'
 import { getUrgency } from '@/utils/date'
 import { fmtMoney } from '@/utils/format'
 import ReminderList from '@/components/reminder/ReminderList.vue'
@@ -13,17 +14,22 @@ import EmptyState from '@/components/common/EmptyState.vue'
 const itemStore = useItemStore()
 const recordStore = useRecordStore()
 const technicianStore = useTechnicianStore()
+const spaceStore = useSpaceStore()
 
 const showRecord = ref(false)
 const presetItemId = ref('')
 
-const overdueCount = computed(() => itemStore.items.filter((i) => getUrgency(i) === 'overdue').length)
-const dueSoonCount = computed(() => itemStore.items.filter((i) => getUrgency(i) === 'dueSoon').length)
+// 当前空间下的物品与记录；切换空间时首页统计与提醒联动
+const scopedItems = computed(() => itemStore.itemsInSpace(spaceStore.currentId))
+const scopedRecords = computed(() => recordStore.recordsInSpace(spaceStore.currentId))
+
+const overdueCount = computed(() => scopedItems.value.filter((i) => getUrgency(i) === 'overdue').length)
+const dueSoonCount = computed(() => scopedItems.value.filter((i) => getUrgency(i) === 'dueSoon').length)
 
 const monthCost = computed(() => {
   const now = new Date()
   const m = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  return recordStore.records
+  return scopedRecords.value
     .filter((r) => r.date && r.date.startsWith(m))
     .reduce((s, r) => s + (Number(r.cost) || 0), 0)
 })
@@ -46,7 +52,7 @@ function onSave(payload) {
   <div class="page">
     <section class="hero">
       <div>
-        <h1 class="hero-title">欢迎回来</h1>
+        <h1 class="hero-title">{{ spaceStore.currentSpace?.name || '我的家' }}</h1>
         <p class="hero-sub">今天有 {{ overdueCount + dueSoonCount }} 项需要关注</p>
       </div>
       <button class="btn btn-primary" @click="openNewRecord">+ 记录保养/维修</button>
@@ -55,7 +61,7 @@ function onSave(payload) {
     <section class="stats">
       <div class="stat-card">
         <div class="stat-label">物品总数</div>
-        <div class="stat-value">{{ itemStore.items.length }}</div>
+        <div class="stat-value">{{ scopedItems.length }}</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">已过期</div>
@@ -73,15 +79,15 @@ function onSave(payload) {
 
     <section class="card">
       <h3>待保养 / 待维修提醒</h3>
-      <ReminderList v-if="itemStore.items.length" :items="itemStore.items" @maintain="openRecord" />
-      <EmptyState v-else title="还没有物品档案" desc="添加第一个物品，系统会自动为你生成保养提醒">
+      <ReminderList v-if="scopedItems.length" :items="scopedItems" @maintain="openRecord" />
+      <EmptyState v-else title="该空间还没有物品档案" desc="切换空间，或在物品页添加第一件物品">
         <router-link to="/items" class="btn btn-primary" style="margin-top: 12px">去添加物品</router-link>
       </EmptyState>
     </section>
 
     <BaseModal v-if="showRecord" title="记录保养 / 维修" @close="showRecord = false">
       <RecordForm
-        :items="itemStore.items"
+        :items="scopedItems"
         :technicians="technicianStore.technicians"
         :preset-item-id="presetItemId"
         @save="onSave"

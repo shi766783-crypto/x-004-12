@@ -1,9 +1,10 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useItemStore } from '@/stores/items'
 import { useRecordStore } from '@/stores/records'
 import { useTechnicianStore } from '@/stores/technicians'
+import { useSpaceStore } from '@/stores/spaces'
 import { categoryOf, CYCLE_UNITS } from '@/constants'
 import {
   nextDueDate,
@@ -25,11 +26,28 @@ const router = useRouter()
 const itemStore = useItemStore()
 const recordStore = useRecordStore()
 const technicianStore = useTechnicianStore()
+const spaceStore = useSpaceStore()
 
 const showEdit = ref(false)
 const showRecord = ref(false)
 
 const item = computed(() => itemStore.itemById(route.params.id))
+
+// 从排行榜等入口进入其他空间的物品时，自动跟随到所属空间
+watch(
+  item,
+  (it) => {
+    if (it?.spaceId && it.spaceId !== spaceStore.currentId) {
+      spaceStore.switchSpace(it.spaceId)
+    }
+  },
+  { immediate: true }
+)
+
+// 新增记录只能选择同一空间内的物品
+const sameSpaceItems = computed(() =>
+  item.value ? itemStore.itemsInSpace(item.value.spaceId) : []
+)
 const category = computed(() => (item.value ? categoryOf(item.value.category) : null))
 const records = computed(() => (item.value ? recordStore.recordsByItem(item.value.id) : []))
 const unitLabel = computed(() => {
@@ -48,7 +66,7 @@ function onSaveItem(payload) {
   showEdit.value = false
 }
 function onSaveRecord(payload) {
-  recordStore.addRecord(payload)
+  recordStore.addRecord({ ...payload, spaceId: item.value.spaceId })
   showRecord.value = false
 }
 function onDelete() {
@@ -84,6 +102,7 @@ function onDeleteRecord(record) {
           </span>
         </div>
         <div v-if="item.brandModel" class="muted">{{ item.brandModel }}</div>
+        <div class="muted">所属空间：{{ spaceStore.spaceName(item.spaceId) || '—' }}</div>
         <div class="status-row">
           <span class="status" :class="getUrgency(item)">{{ URGENCY_LABEL[getUrgency(item)] }}</span>
           <span v-if="nextDueDate(item)" class="muted">下次保养：{{ nextDueDate(item) }}</span>
@@ -120,12 +139,18 @@ function onDeleteRecord(record) {
     </section>
 
     <BaseModal v-if="showEdit" title="编辑物品" @close="showEdit = false">
-      <ItemForm :item="item" @save="onSaveItem" @cancel="showEdit = false" />
+      <ItemForm
+        :item="item"
+        :spaces="spaceStore.spaces"
+        :current-space-id="spaceStore.currentId"
+        @save="onSaveItem"
+        @cancel="showEdit = false"
+      />
     </BaseModal>
 
     <BaseModal v-if="showRecord" title="记录保养 / 维修" @close="showRecord = false">
       <RecordForm
-        :items="itemStore.items"
+        :items="sameSpaceItems"
         :technicians="technicianStore.technicians"
         :preset-item-id="item.id"
         @save="onSaveRecord"

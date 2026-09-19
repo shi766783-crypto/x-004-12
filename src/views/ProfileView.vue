@@ -1,19 +1,27 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useItemStore } from '@/stores/items'
 import { useRecordStore } from '@/stores/records'
 import { useTechnicianStore } from '@/stores/technicians'
 import { useUserStore } from '@/stores/user'
+import { useSpaceStore } from '@/stores/spaces'
+import SpaceSwitcher from '@/components/space/SpaceSwitcher.vue'
 
 const itemStore = useItemStore()
 const recordStore = useRecordStore()
 const technicianStore = useTechnicianStore()
 const userStore = useUserStore()
+const spaceStore = useSpaceStore()
+
+// 通过组件实例方法打开空间管理弹窗
+const switcherRef = ref(null)
+const showSpaceManager = () => switcherRef.value?.open?.()
 
 const badges = computed(() => userStore.allBadges)
 const unlocked = computed(() => userStore.unlockedCount)
 
 const stats = computed(() => [
+  { label: '空间', value: spaceStore.spaceCount },
   { label: '物品', value: itemStore.items.length },
   { label: '记录', value: recordStore.records.length },
   { label: '师傅', value: technicianStore.technicians.length },
@@ -52,6 +60,17 @@ const stats = computed(() => [
     </section>
 
     <section class="card">
+      <h3>家庭空间</h3>
+      <p class="muted-text">
+        当前位于「{{ spaceStore.currentSpace?.name }}」，共 {{ spaceStore.spaceCount }} 个空间。
+        可创建父母家、出租房等空间并分别管理物品。
+      </p>
+      <div class="links">
+        <button type="button" class="btn btn-outline" @click="showSpaceManager">管理家庭空间</button>
+      </div>
+    </section>
+
+    <section class="card">
       <h3>快捷入口</h3>
       <div class="links">
         <router-link to="/items" class="btn btn-outline">我的物品</router-link>
@@ -60,6 +79,9 @@ const stats = computed(() => [
         <router-link to="/dashboard" class="btn btn-outline">统计看板</router-link>
       </div>
     </section>
+
+    <!-- 无触发按钮，仅复用其管理弹窗 -->
+    <SpaceSwitcher ref="switcherRef" class="hidden-switcher" />
   </div>
 </template>
 
@@ -137,5 +159,13 @@ const stats = computed(() => [
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+.muted-text {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.hidden-switcher {
+  display: none;
 }
 </style>
